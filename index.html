@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Gastos Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --secondary-color: #0f3460;
+            --accent-color: #00a8ff;
+            --accent-hover-color: #008fdb;
+            --text-color: #e0e0e0;
+            --border-color: #535f7f;
+            --success-color: #2ecc71;
+            --deficit-color: #f39c12;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 1400px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+        .card {
+            background-color: var(--primary-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .full-width { grid-column: 1 / -1; }
+        h1, h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        button {
+            background: linear-gradient(45deg, var(--accent-color), var(--accent-hover-color));
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            align-self: flex-start;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 168, 255, 0.3);
+        }
+        .balance-display {
+            font-size: clamp(1.2rem, 4vw, 1.5rem);
+            font-weight: 600;
+            text-align: center;
+            margin: 0.5rem 0;
+        }
+        .balance-value { color: var(--success-color); }
+        .deficit { color: var(--deficit-color); }
+        .salary-summary { text-align: center; margin: 1rem 0;}
+        .salary-summary span {
+            display: inline-block;
+            margin: 0 10px;
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
+            font-weight: 600;
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 14px; border-bottom: 1px solid var(--border-color); text-align: left; }
+        th { background-color: var(--secondary-color); color: var(--accent-color); font-weight: 700; }
+        tbody tr:hover { background-color: var(--secondary-color); }
+        .delete-btn {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            font-size: 0.8rem;
+            padding: 6px 10px;
+        }
+        /* FIX: Contenedor para el gráfico responsivo */
+        .chart-container {
+            position: relative;
+            height: 400px; /* Altura fija para el gráfico */
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card full-width">
+            <h1>Gestor de Gastos Pro</h1>
+            <div class="salary-summary" id="salary-summary">Cargando resumen...</div>
+        </div>
+
+        <!-- NUEVO: TARJETA DE CONFIGURACIÓN UNIFICADA -->
+        <div class="card">
+            <h2>⚙️ Configuración General</h2>
+            <div class="form-group">
+                <label for="monthly-salary">Sueldo Mensual (UYU)</label>
+                <input type="number" id="monthly-salary" placeholder="Ej: 40000">
+            </div>
+            <div class="form-group">
+                <label for="savings-percentage">Meta de Ahorro Automático (%)</label>
+                <input type="number" id="savings-percentage" placeholder="Ej: 10" min="0" max="100">
+            </div>
+            <div class="form-group">
+                <label for="usd-rate">1 Dólar (USD) = X Pesos (UYU)</label>
+                <input type="number" id="usd-rate" step="0.01" placeholder="Ej: 40.50">
+            </div>
+            <div class="form-group">
+                <label for="brl-rate">1 Real (BRL) = X Pesos (UYU)</label>
+                <input type="number" id="brl-rate" step="0.01" placeholder="Ej: 8.20">
+            </div>
+            <button onclick="App.saveSettings()">Guardar Configuración</button>
+        </div>
+        
+        <div class="card">
+            <h2>💸 Movimientos de Ahorro Manual</h2>
+            <div class="form-group">
+                <label for="savings-movement-amount">Monto (UYU)</label>
+                <input type="number" id="savings-movement-amount" placeholder="Ej: 200">
+            </div>
+            <div class="form-group">
+                 <label for="savings-movement-type">Acción</label>
+                 <select id="savings-movement-type">
+                     <option value="add">Añadir al Ahorro</option>
+                     <option value="subtract">Quitar del Ahorro</option>
+                 </select>
+            </div>
+            <button onclick="App.adjustManualSavings()">Realizar Movimiento</button>
+        </div>
+
+        <div class="card">
+            <h2>➕ Nuevo Gasto</h2>
+            <div class="form-group">
+                <label for="expense-desc">Descripción</label>
+                <input type="text" id="expense-desc" placeholder="Ej: Café y medialunas">
+            </div>
+            <div class="form-group">
+                <label for="expense-amount">Monto</label>
+                <input type="number" id="expense-amount" placeholder="Ej: 150">
+            </div>
+            <div class="form-group">
+                <label for="expense-currency">Moneda</label>
+                <select id="expense-currency">
+                    <option value="UYU">Pesos Uruguayos (UYU)</option>
+                    <option value="USD">Dólar (USD)</option>
+                    <option value="BRL">Reales (BRL)</option>
+                </select>
+            </div>
+            <button onclick="App.addExpense()">Agregar Gasto</button>
+        </div>
+
+        <div class="card">
+            <h2>📊 Balance Diario</h2>
+            <div class="form-group">
+                <label for="daily-limit">Límite de Gasto Diario (UYU)</label>
+                <input type="number" id="daily-limit" placeholder="Ej: 1000">
+            </div>
+            <div id="daily-balance-display" class="balance-display"></div>
+            <div id="daily-actions" style="text-align: center; margin-top: 1rem;"></div>
+        </div>
+        
+        <div class="card full-width">
+            <h2>🗓️ Resumen General de Gastos</h2>
+            <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+                <div class="balance-display">Semanal: <span id="weekly-balance">0 UYU</span></div>
+                <div class="balance-display">Mensual: <span id="monthly-balance">0 UYU</span></div>
+                <div class="balance-display">Anual: <span id="annual-balance">0 UYU</span></div>
+            </div>
+        </div>
+
+        <div class="card full-width">
+            <h2>📈 Gráfico de Gastos del Mes</h2>
+            <!-- FIX: Contenedor para el gráfico responsivo -->
+            <div class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card full-width">
+            <h2>📜 Historial de Gastos</h2>
+            <div id="expense-history-loader" class="loader">Cargando historial...</div>
+            <div style="overflow-x: auto;">
+                <table id="expense-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Descripción</th>
+                            <th>Monto Original</th>
+                            <th>Monto (UYU)</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expense-history"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<script>
+const CONFIG = {
+    googleWebAppUrl: 'https://script.google.com/macros/s/AKfycbzvl7XbADb3KNc5ZO97x1oH3uowkoDnRZvAP8wx1Zwnk8tHc9oNyW_EOQS1rNPHM9T2Vg/exec',
+};
+
+class PersonalFinanceApp {
+    constructor() {
+        this.expenses = [];
+        this.charts = {};
+        this.settings = {
+            salary: 0,
+            savingsPercentage: 10,
+            dailyLimit: 0,
+            manualSavings: 0,
+            usdToUyu: 40.0, // Tasa por defecto
+            brlToUyu: 8.0,  // Tasa por defecto
+        };
+        this.saveSettings = this.saveSettings.bind(this);
+        this.addExpense = this.addExpense.bind(this);
+        this.adjustManualSavings = this.adjustManualSavings.bind(this);
+    }
+
+    async init() {
+        this.loadSettings();
+        await this.fetchExpenses();
+    }
+
+    // LÓGICA DE CONVERSIÓN CON TASAS MANUALES
+    convertToUYU(amount, currency) {
+        if (currency === 'UYU') return amount;
+        
+        const usdRate = this.settings.usdToUyu || 1; // Fallback a 1 si no está definido
+        const brlRate = this.settings.brlToUyu || 1;
+
+        if (currency === 'USD') return amount * usdRate;
+        if (currency === 'BRL') return amount * brlRate;
+        
+        return amount;
+    }
+    
+    // CARGAR Y GUARDAR CONFIGURACIÓN (INCLUYENDO TASAS)
+    loadSettings() {
+        const savedSettings = JSON.parse(localStorage.getItem('financeAppSettingsProV2'));
+        if (savedSettings) {
+            this.settings = { ...this.settings, ...savedSettings };
+        }
+        document.getElementById('monthly-salary').value = this.settings.salary || '';
+        document.getElementById('savings-percentage').value = this.settings.savingsPercentage || '';
+        document.getElementById('daily-limit').value = this.settings.dailyLimit || '';
+        document.getElementById('usd-rate').value = this.settings.usdToUyu || '';
+        document.getElementById('brl-rate').value = this.settings.brlToUyu || '';
+        this.updateUI();
+    }
+
+    saveSettings() {
+        this.settings.salary = parseFloat(document.getElementById('monthly-salary').value) || 0;
+        this.settings.savingsPercentage = parseFloat(document.getElementById('savings-percentage').value) || 0;
+        this.settings.dailyLimit = parseFloat(document.getElementById('daily-limit').value) || 0;
+        this.settings.usdToUyu = parseFloat(document.getElementById('usd-rate').value) || 1;
+        this.settings.brlToUyu = parseFloat(document.getElementById('brl-rate').value) || 1;
+        
+        localStorage.setItem('financeAppSettingsProV2', JSON.stringify(this.settings));
+        alert('Configuración guardada.');
+        this.updateUI();
+    }
+    
+    adjustManualSavings() {
+        const amountEl = document.getElementById('savings-movement-amount');
+        const amount = parseFloat(amountEl.value) || 0;
+        const type = document.getElementById('savings-movement-type').value;
+        if (amount <= 0) { alert("Introduce un monto válido."); return; }
+        
+        this.settings.manualSavings += (type === 'add' ? amount : -amount);
+        
+        alert(`Movimiento de ${amount.toFixed(2)} UYU realizado en ahorros.`);
+        amountEl.value = '';
+        // Guardar los settings para persistir el cambio en manualSavings
+        localStorage.setItem('financeAppSettingsProV2', JSON.stringify(this.settings));
+        this.updateUI();
+    }
+
+    async fetchExpenses() {
+        document.getElementById('expense-history-loader').style.display = 'block';
+        document.getElementById('expense-table').style.display = 'none';
+        try {
+            const response = await fetch(CONFIG.googleWebAppUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            if (result.status === 'success') {
+                this.expenses = result.data.map((row, index) => ({
+                    id: index + 2, 
+                    timestamp: new Date(row[0]), description: row[1],
+                    amount: parseFloat(row[2]), currency: row[3],
+                    amountUYU: parseFloat(row[4])
+                }));
+                 this.updateUI();
+            } else { throw new Error(result.message || 'Error desconocido'); }
+        } catch (error) { 
+            console.error('Error al cargar datos:', error);
+            alert(`Error al cargar datos desde Google Sheets: ${error.message}`);
+        } finally {
+            document.getElementById('expense-history-loader').style.display = 'none';
+            document.getElementById('expense-table').style.display = 'table';
+        }
+    }
+
+    async addExpense() {
+        const descEl = document.getElementById('expense-desc'), amountEl = document.getElementById('expense-amount');
+        const currency = document.getElementById('expense-currency').value;
+        const amount = parseFloat(amountEl.value);
+        if (!descEl.value || !amount || amount <= 0) { alert('Completa la descripción y un monto válido.'); return; }
+        
+        const amountUYU = this.convertToUYU(amount, currency);
+        const newExpenseData = [ new Date().toISOString(), descEl.value, amount, currency, amountUYU.toFixed(2) ];
+        
+        document.body.style.cursor = 'wait';
+        try {
+            // Usar no-cors para evitar problemas de CORS con Google Apps Script
+            await fetch(CONFIG.googleWebAppUrl, { 
+                method: 'POST', 
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ action: 'addExpense', data: newExpenseData }) 
+            });
+            
+            descEl.value = ''; amountEl.value = '';
+            alert('Gasto agregado. Actualizando...');
+            setTimeout(() => { document.body.style.cursor = 'default'; this.fetchExpenses(); }, 2000);
+        } catch (error) { 
+            console.error('Error al agregar gasto:', error);
+            alert('Hubo un error al guardar el gasto. Verifica la configuración del Google Apps Script.'); 
+            document.body.style.cursor = 'default'; 
+        }
+    }
+
+    async deleteExpense(rowId) {
+        if (!confirm('¿Seguro que quieres eliminar este gasto?')) return;
+        document.body.style.cursor = 'wait';
+        try {
+            // Usar no-cors para evitar problemas de CORS con Google Apps Script
+            await fetch(CONFIG.googleWebAppUrl, { 
+                method: 'POST', 
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ action: 'deleteExpense', rowId: rowId }) 
+            });
+            
+            alert('Gasto eliminado. Actualizando...');
+            setTimeout(() => { document.body.style.cursor = 'default'; this.fetchExpenses(); }, 2000);
+        } catch (error) { 
+            console.error('Error al eliminar gasto:', error);
+            alert('Hubo un error al eliminar el gasto. Verifica la configuración del Google Apps Script.'); 
+            document.body.style.cursor = 'default'; 
+        }
+    }
+    
+    updateUI() {
+        this.updateSalarySummary();
+        this.renderExpenseHistory();
+        this.calculateBalances();
+        this.renderCharts();
+    }
+    
+    updateSalarySummary() {
+        const salary = this.settings.salary;
+        const autoSavings = salary * (this.settings.savingsPercentage / 100);
+        const totalSavings = autoSavings + (this.settings.manualSavings || 0);
+        const monthlyExpenses = this.sumExpenses(exp => exp.timestamp.getMonth() === new Date().getMonth() && exp.timestamp.getFullYear() === new Date().getFullYear());
+        const remainingSalary = salary - totalSavings - monthlyExpenses;
+        document.getElementById('salary-summary').innerHTML = `
+            <span>Ahorro Total: <strong class="balance-value">${totalSavings.toFixed(2)} UYU</strong></span> |
+            <span>Gastado (Mes): <strong>${monthlyExpenses.toFixed(2)} UYU</strong></span> |
+            <span>Sueldo Restante: <strong class="${remainingSalary < 0 ? 'deficit' : 'balance-value'}">${remainingSalary.toFixed(2)} UYU</strong></span>
+        `;
+    }
+
+    renderExpenseHistory() {
+        const tbody = document.getElementById('expense-history');
+        tbody.innerHTML = '';
+        this.expenses.forEach(expense => {
+            const row = tbody.insertRow();
+            row.insertCell().textContent = expense.timestamp.toLocaleDateString();
+            row.insertCell().textContent = expense.description;
+            row.insertCell().textContent = `${expense.amount.toFixed(2)} ${expense.currency}`;
+            row.insertCell().textContent = `${expense.amountUYU.toFixed(2)} UYU`;
+            const actionCell = row.insertCell();
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Eliminar';
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.onclick = () => this.deleteExpense(expense.id);
+            actionCell.appendChild(deleteBtn);
+        });
+    }
+
+    calculateBalances() {
+        const now = new Date();
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+        const weeklyExpenses = this.sumExpenses(exp => exp.timestamp >= startOfWeek);
+        const monthlyExpenses = this.sumExpenses(exp => exp.timestamp >= startOfMonth);
+        const annualExpenses = this.sumExpenses(exp => exp.timestamp >= startOfYear);
+
+        document.getElementById('weekly-balance').textContent = `${weeklyExpenses.toFixed(2)} UYU`;
+        document.getElementById('monthly-balance').textContent = `${monthlyExpenses.toFixed(2)} UYU`;
+        document.getElementById('annual-balance').textContent = `${annualExpenses.toFixed(2)} UYU`;
+
+        // Balance Diario
+        const todayExpenses = this.sumExpenses(exp => exp.timestamp.toDateString() === new Date().toDateString());
+        const dailyLimit = this.settings.dailyLimit || 0;
+        const dailyRemaining = dailyLimit - todayExpenses;
+        const dailyBalanceDisplay = document.getElementById('daily-balance-display');
+        const dailyActions = document.getElementById('daily-actions');
+
+        if (dailyLimit > 0) {
+            dailyBalanceDisplay.innerHTML = `
+                Límite Diario: <strong class="balance-value">${dailyLimit.toFixed(2)} UYU</strong><br>
+                Gastado Hoy: <strong>${todayExpenses.toFixed(2)} UYU</strong><br>
+                Restante: <strong class="${dailyRemaining < 0 ? 'deficit' : 'balance-value'}">${dailyRemaining.toFixed(2)} UYU</strong>
+            `;
+            if (dailyRemaining < 0) {
+                dailyActions.innerHTML = '<p style="color: var(--deficit-color);">¡Has excedido tu límite diario!</p>';
+            } else {
+                dailyActions.innerHTML = '';
+            }
+        } else {
+            dailyBalanceDisplay.innerHTML = '<p>Establece un límite diario en la configuración.</p>';
+            dailyActions.innerHTML = '';
+        }
+    }
+
+    sumExpenses(filterFn) {
+        return this.expenses.filter(filterFn).reduce((sum, exp) => sum + exp.amountUYU, 0);
+    }
+
+    renderCharts() {
+        const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+        const monthlyExpensesByDay = {};
+        this.expenses.forEach(exp => {
+            const date = exp.timestamp.toISOString().split('T')[0];
+            monthlyExpensesByDay[date] = (monthlyExpensesByDay[date] || 0) + exp.amountUYU;
+        });
+
+        const sortedDates = Object.keys(monthlyExpensesByDay).sort();
+        const data = sortedDates.map(date => monthlyExpensesByDay[date]);
+
+        if (this.charts.monthlyChart) {
+            this.charts.monthlyChart.destroy();
+        }
+
+        this.charts.monthlyChart = new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: sortedDates,
+                datasets: [{
+                    label: 'Gastos Diarios (UYU)',
+                    data: data,
+                    borderColor: 'var(--accent-color)',
+                    backgroundColor: 'rgba(0, 168, 255, 0.2)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Permitir que el gráfico no mantenga la relación de aspecto
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: { unit: 'day' },
+                        title: { display: true, text: 'Fecha', color: 'var(--text-color)' },
+                        ticks: { color: 'var(--text-color)' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Monto (UYU)', color: 'var(--text-color)' },
+                        ticks: { color: 'var(--text-color)' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: 'var(--text-color)' } }
+                }
+            }
+        });
+    }
+}
+
+const App = new PersonalFinanceApp();
+window.onload = () => App.init();
+</script>
+</body>
+</html>
+
+
