@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Gestor de Gastos Pro - Con Gráficos</title>
+    <!-- LIBRERÍA DE GRÁFICOS (Chart.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; color: #e0e0e0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; } .header { text-align: center; margin-bottom: 30px; color: #e0e0e0; } .header h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); } .status-bar { background: rgba(26, 34, 46, 0.95); border-radius: 15px; padding: 20px; margin-bottom: 30px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(10px); border: 1px solid rgba(50, 60, 80, 0.5); } .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; text-align: center; } .status-item { padding: 15px; border-radius: 10px; background: linear-gradient(135deg, #5f2c82 0%, #49a09d 100%); color: white; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); } .status-item.savings { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); } .status-item.remaining { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); } .status-item.emergency { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); } .card { background: rgba(26, 34, 46, 0.95); border-radius: 15px; padding: 25px; margin-bottom: 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(10px); border: 1px solid rgba(50, 60, 80, 0.5); } .card h2 { color: #a0a0a0; margin-bottom: 20px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; } .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; } .form-group { display: flex; flex-direction: column; } .form-group label { margin-bottom: 8px; font-weight: 600; color: #a0a0a0; } .form-group input, .form-group select { padding: 12px; border: 2px solid #3a475e; border-radius: 8px; font-size: 1rem; background-color: #2a334a; color: #e0e0e0; transition: border-color 0.3s ease; } .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3); } .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.2); } .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); } .btn:active { transform: translateY(0); } .btn-success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); } .btn-danger { background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); } .expense-table { width: 100%; border-collapse: collapse; margin-top: 20px; } .expense-table th, .expense-table td { padding: 12px; text-align: left; border-bottom: 1px solid #3a475e; color: #e0e0e0; } .expense-table th { background: #2a334a; font-weight: 600; color: #a0a0a0; } .expense-table tr:hover { background: #1e2738; } .loading { text-align: center; padding: 40px; color: #a0a0a0; } .error-message { background: #4a1e1e; color: #ff6b6b; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #e53e3e; } .success-message { background: #1e4a2a; color: #6bff9b; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #48bb78; } .sync-status { position: fixed; top: 20px; right: 20px; padding: 10px 15px; border-radius: 20px; background: rgba(26, 34, 46, 0.9); box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 0.9rem; font-weight: 600; color: #e0e0e0; z-index: 100; } .sync-status.syncing { background: #3a2a1e; color: #ffc107; } .sync-status.synced { background: #1e4a2a; color: #6bff9b; } .sync-status.error { background: #4a1e1e; color: #ff6b6b; } .sync-status.offline { background: #4a4a4a; color: #f0f0f0; } #daily-balance-info, #emergency-fund-card { background: #1e2738; color: #e0e0e0; margin-top: 15px; padding: 15px; border-radius: 8px; } #emergency-fund-card strong { color: #a0a0a0; font-size: 1.2rem;}
+        /* ESTILOS PARA GRÁFICOS */
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; } .chart-container { background: #1e2738; padding: 20px; border-radius: 10px; } .chart-container h3 { text-align: center; margin-bottom: 15px; color: #a0a0a0; }
+        @media (max-width: 768px) { .container { padding: 10px; } .header h1 { font-size: 2rem; } .form-grid, .status-grid, .charts-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="sync-status" id="sync-status">🔄 Conectando...</div>
+    <div class="container">
+        <div class="header"><h1>💰 Gestor de Gastos Pro</h1><p>Versión mejorada con sincronización completa</p></div>
+        <div class="status-bar"><div class="status-grid"><div class="status-item savings"><div>Ahorro Total</div><div id="total-savings">0.00 UYU</div></div><div class="status-item emergency"><div>Fondo Emergencia</div><div id="emergency-fund-display-bar">0.00 UYU</div></div><div class="status-item"><div>Gastado (Mes)</div><div id="monthly-spent">0.00 UYU</div></div><div class="status-item remaining"><div>Sueldo Restante</div><div id="remaining-salary">0.00 UYU</div></div></div></div>
+        <div class="card"><h2>⚙️ Configuración General</h2><div class="form-grid"><div class="form-group"><label for="monthly-salary">Sueldo Mensual (UYU)</label><input type="number" id="monthly-salary" placeholder="Ej: 40000"></div><div class="form-group"><label for="savings-percentage">Meta de Ahorro Automático (%)</label><input type="number" id="savings-percentage" placeholder="Ej: 10"></div><div class="form-group"><label for="usd-rate">1 Dólar (USD) = X Pesos (UYU)</label><input type="number" step="0.01" id="usd-rate" placeholder="Ej: 40.50"></div><div class="form-group"><label for="brl-rate">1 Real (BRL) = X Pesos (UYU)</label><input type="number" step="0.01" id="brl-rate" placeholder="Ej: 8.20"></div></div><button class="btn" onclick="app.saveSettings()">💾 Guardar Configuración</button></div>
+        <div class="card"><h2>💸 Movimientos de Ahorro Manual</h2><div class="form-grid"><div class="form-group"><label for="savings-movement-amount">Monto (UYU)</label><input type="number" id="savings-movement-amount" placeholder="Ej: 200"></div><div class="form-group"><label for="savings-movement-type">Acción</label><select id="savings-movement-type"><option value="add">Añadir al Ahorro</option><option value="subtract">Quitar del Ahorro</option></select></div></div><button class="btn btn-success" onclick="app.adjustManualSavings()">💰 Realizar Movimiento</button></div>
+        <div class="card"><h2>🛡️ Fondo de Emergencia</h2><div id="emergency-fund-card"><p><strong>Monto Actual:</strong> <span id="emergency-fund-display">0.00 UYU</span></p></div><div class="form-grid" style="margin-top: 20px;"><div class="form-group"><label for="emergency-fund-amount">Monto a Mover (UYU)</label><input type="number" id="emergency-fund-amount" placeholder="Ej: 1000"></div></div><button class="btn btn-success" onclick="app.transferToEmergencyFund()">💸 Mover al Fondo</button></div>
+        
+        <!-- SECTOR DE GRÁFICOS -->
+        <div class="card">
+            <h2>📊 Gráficos de Gastos</h2>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Últimos 7 Días</h3>
+                    <canvas id="dailyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Últimas 4 Semanas</h3>
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Últimos 6 Meses</h3>
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card"><h2>➕ Nuevo Gasto</h2><div class="form-grid"><div class="form-group"><label for="expense-description">Descripción</label><input type="text" id="expense-description" placeholder="Ej: Café y medialunas"></div><div class="form-group"><label for="expense-amount">Monto</label><input type="number" step="0.01" id="expense-amount" placeholder="Ej: 150"></div><div class="form-group"><label for="expense-currency">Moneda</label><select id="expense-currency"><option value="UYU">Pesos Uruguayos (UYU)</option><option value="USD">Dólar (USD)</option><option value="BRL">Reales (BRL)</option></select></div></div><button class="btn btn-success" onclick="app.addExpense()">📝 Agregar Gasto</button></div>
+        <div class="card"><h2>📊 Balance Diario</h2><div class="form-group"><label for="daily-limit">Límite de Gasto Diario (UYU)</label><input type="number" id="daily-limit" placeholder="Ej: 1000"></div><div id="daily-balance-info"><p><strong>Gastado hoy:</strong> <span id="today-spent">0.00 UYU</span></p><p><strong>Límite diario:</strong> <span id="daily-limit-display">0.00 UYU</span></p><p><strong>Restante hoy:</strong> <span id="today-remaining">0.00 UYU</span></p></div></div>
+        <div class="card"><h2>📋 Historial de Gastos</h2><div id="expense-history-loader" class="loading"><p>🔄 Cargando gastos...</p></div><div id="expense-table-container" style="display: none;"><table class="expense-table" id="expense-table"><thead><tr><th>Fecha</th><th>Descripción</th><th>Monto Original</th><th>Moneda</th><th>Monto UYU</th><th>Acciones</th></tr></thead><tbody id="expense-table-body"></tbody></table></div></div>
+    </div>
+    <script>
+        const CONFIG = {
+            googleWebAppUrl: 'https://script.google.com/macros/s/AKfycbyff-Efd6XwHj1KGbrPRm_DeXHkBdv0dDliP4jkAy7t3SBV3rnEOnIklqqcZsOplXo9jg/exec',
+        };
+
+        class PersonalFinanceAppMejorado {
+            constructor() { this.expenses = []; this.settings = {}; this.syncStatusEl = document.getElementById('sync-status'); this.charts = {}; }
+            
+            async init() { this.addOnlineStatusListener(); await this.loadInitialData(); }
+            
+            async loadInitialData() {
+                this.showSyncStatus('syncing', '🔄 Cargando datos...');
+                if (!navigator.onLine) { this.showSyncStatus('offline', '🔌 Modo Offline'); this.showMessage("Necesitas conexión a internet para usar la app.", 'error'); return; }
+                try {
+                    await this.loadSettingsFromCloud();
+                    await this.loadExpensesFromCloud();
+                    this.showSyncStatus('synced', '✅ Sincronizado');
+                } catch (error) {
+                    console.error("Error en la carga inicial:", error);
+                    this.showSyncStatus('error', '❌ Error de red');
+                    this.showMessage(`No se pudo conectar: ${error.message}`, 'error');
+                } finally {
+                    this.updateUI();
+                    this.updateCharts();
+                }
+            }
+
+            async apiCall(method, payload) {
+                if (!navigator.onLine) { throw new Error("Estás desconectado."); }
+                const url = new URL(CONFIG.googleWebAppUrl);
+                url.searchParams.append('_cacheBust', Date.now());
+                const options = { method: method, mode: 'cors', headers: {} };
+                if (method === 'POST') {
+                    options.headers['Content-Type'] = 'text/plain;charset=UTF-8';
+                    options.body = JSON.stringify(payload);
+                } else {
+                    for (const key in payload) { url.searchParams.append(key, payload[key]); }
+                }
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error(`Error de red: ${response.statusText}`);
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(`Error en el servidor: ${result.message}`);
+                return result;
+            }
+
+            async loadSettingsFromCloud() { const result = await this.apiCall('GET', { action: 'getSettings' }); this.settings = result.settings || {}; this.populateSettingsForm(); }
+            
+            async saveSettings(showSuccessMessage = true) {
+                this.showSyncStatus('syncing', '💾 Guardando...');
+                const newSettings = {
+                    salary: parseFloat(document.getElementById('monthly-salary').value) || 0,
+                    savingsPercentage: parseFloat(document.getElementById('savings-percentage').value) || 0,
+                    dailyLimit: parseFloat(document.getElementById('daily-limit').value) || 0,
+                    usdToUyu: parseFloat(document.getElementById('usd-rate').value) || 1,
+                    brlToUyu: parseFloat(document.getElementById('brl-rate').value) || 1,
+                    manualSavings: this.settings.manualSavings || 0,
+                    emergencyFund: this.settings.emergencyFund || 0
+                };
+                try {
+                    await this.apiCall('POST', { action: 'saveSettings', data: newSettings });
+                    this.settings = newSettings;
+                    this.updateUI();
+                    this.showSyncStatus('synced', '✅ Guardado');
+                    if (showSuccessMessage) { this.showMessage('Configuración guardada y sincronizada.', 'success'); }
+                } catch (error) {
+                    console.error("Error guardando:", error);
+                    this.showSyncStatus('error', '❌ Error al guardar');
+                    this.showMessage(error.message, 'error');
+                }
+            }
+            populateSettingsForm() { document.getElementById('monthly-salary').value = this.settings.salary || ''; document.getElementById('savings-percentage').value = this.settings.savingsPercentage || ''; document.getElementById('daily-limit').value = this.settings.dailyLimit || ''; document.getElementById('usd-rate').value = this.settings.usdToUyu || ''; document.getElementById('brl-rate').value = this.settings.brlToUyu || ''; }
+            
+            async loadExpensesFromCloud() {
+                const result = await this.apiCall('GET', { action: 'getExpenses' });
+                this.expenses = result.data.map((row, index) => ({
+                    timestamp: new Date(row[0]), description: row[1], originalAmount: parseFloat(row[2]) || 0,
+                    currency: row[3] || 'UYU', amountUYU: parseFloat(row[4]) || 0,
+                    cloudRowId: index + 2
+                }));
+                this.renderExpenseTable();
+            }
+
+            async addExpense() {
+                const description = document.getElementById('expense-description').value.trim();
+                const amount = parseFloat(document.getElementById('expense-amount').value) || 0;
+                const currency = document.getElementById('expense-currency').value;
+                if (!description || amount <= 0) { this.showMessage('Por favor, completa todos los campos.', 'error'); return; }
+                const now = new Date();
+                const expenseData = [now.toISOString(), description, amount, currency, this.convertToUYU(amount, currency)];
+                try {
+                    await this.apiCall('POST', { action: 'addExpense', data: expenseData });
+                    this.showMessage('Gasto agregado.', 'success');
+                    document.getElementById('expense-description').value = ''; document.getElementById('expense-amount').value = '';
+                    await this.loadInitialData();
+                } catch (error) { this.showMessage(error.message, 'error'); }
+            }
+
+            async deleteExpense(cloudRowId) {
+                 if (!confirm('¿Estás seguro de eliminar este gasto?')) return;
+                try {
+                    await this.apiCall('POST', { action: 'deleteExpense', rowId: cloudRowId });
+                    this.showMessage('Gasto eliminado.', 'success');
+                    await this.loadInitialData();
+                } catch (error) { this.showMessage(error.message, 'error'); }
+            }
+            
+            async adjustManualSavings() {
+                const amount = parseFloat(document.getElementById('savings-movement-amount').value) || 0;
+                const type = document.getElementById('savings-movement-type').value;
+                if (amount <= 0) { this.showMessage('El monto debe ser mayor a cero.', 'error'); return; }
+                this.settings.manualSavings = (this.settings.manualSavings || 0) + (type === 'add' ? amount : -amount);
+                await this.saveSettings(false);
+                this.showMessage('Movimiento de ahorro realizado.', 'success');
+                document.getElementById('savings-movement-amount').value = '';
+            }
+
+            async transferToEmergencyFund() {
+                const amountEl = document.getElementById('emergency-fund-amount');
+                const amount = parseFloat(amountEl.value) || 0;
+                if (amount <= 0) { this.showMessage('El monto a mover debe ser mayor a cero.', 'error'); return; }
+                this.settings.emergencyFund = (this.settings.emergencyFund || 0) + amount;
+                await this.saveSettings(false);
+                this.showMessage(`$${amount.toFixed(2)} movido al fondo de emergencia.`, 'success');
+                amountEl.value = '';
+            }
+
+            updateCharts() {
+                if (typeof Chart === 'undefined') return;
+                const chartBackgroundColor = 'rgba(102, 126, 234, 0.6)';
+                const chartBorderColor = 'rgba(102, 126, 234, 1)';
+
+                // Gráfico Diario (Últimos 7 días)
+                const dailyData = Array(7).fill(0);
+                const dailyLabels = Array(7).fill('');
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    dailyLabels[6 - i] = d.toLocaleDateString('es-UY', { weekday: 'short' });
+                    this.expenses.forEach(e => {
+                        if (new Date(e.timestamp).toDateString() === d.toDateString()) {
+                            dailyData[6 - i] += e.amountUYU;
+                        }
+                    });
+                }
+                this.renderChart('dailyChart', 'bar', dailyLabels, dailyData, 'Gastos Diarios', chartBackgroundColor, chartBorderColor);
+                
+                // Gráfico Semanal (Últimas 4 semanas)
+                const weeklyData = Array(4).fill(0);
+                const weeklyLabels = ['Hace 3 sem', 'Hace 2 sem', 'Semana Pasada', 'Esta Semana'];
+                const now = new Date();
+                this.expenses.forEach(e => {
+                    const daysAgo = (now - new Date(e.timestamp)) / (1000 * 3600 * 24);
+                    if (daysAgo < 28) {
+                        const weekIndex = 3 - Math.floor(daysAgo / 7);
+                        weeklyData[weekIndex] += e.amountUYU;
+                    }
+                });
+                this.renderChart('weeklyChart', 'bar', weeklyLabels, weeklyData, 'Gastos Semanales', chartBackgroundColor, chartBorderColor);
+
+                // Gráfico Mensual (Últimos 6 meses)
+                const monthlyData = Array(6).fill(0);
+                const monthlyLabels = Array(6).fill('');
+                for (let i = 0; i < 6; i++) {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() - i);
+                    monthlyLabels[5 - i] = d.toLocaleDateString('es-UY', { month: 'short', year: '2-digit' });
+                    this.expenses.forEach(e => {
+                        const expenseDate = new Date(e.timestamp);
+                        if (expenseDate.getMonth() === d.getMonth() && expenseDate.getFullYear() === d.getFullYear()) {
+                            monthlyData[5 - i] += e.amountUYU;
+                        }
+                    });
+                }
+                this.renderChart('monthlyChart', 'bar', monthlyLabels, monthlyData, 'Gastos Mensuales', chartBackgroundColor, chartBorderColor);
+            }
+
+            renderChart(canvasId, type, labels, data, label, backgroundColor, borderColor) {
+                if (this.charts[canvasId]) {
+                    this.charts[canvasId].destroy();
+                }
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                this.charts[canvasId] = new Chart(ctx, {
+                    type: type,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: label,
+                            data: data,
+                            backgroundColor: backgroundColor,
+                            borderColor: borderColor,
+                            borderWidth: 1,
+                            borderRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                            x: { ticks: { color: '#a0a0a0' }, grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            renderExpenseTable() {
+                const tbody = document.getElementById('expense-table-body'); tbody.innerHTML = ''; document.getElementById('expense-history-loader').style.display = 'none'; document.getElementById('expense-table-container').style.display = 'block'; if (this.expenses.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No hay gastos registrados</td></tr>'; return; }
+                const sorted = [...this.expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                sorted.forEach(expense => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${new Date(expense.timestamp).toLocaleDateString('es-UY')}</td><td>${expense.description}</td><td>${expense.originalAmount.toFixed(2)}</td><td>${expense.currency}</td><td>${expense.amountUYU.toFixed(2)}</td><td><button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="app.deleteExpense(${expense.cloudRowId})">🗑️ Eliminar</button></td>`;
+                    tbody.appendChild(row);
+                });
+            }
+            updateUI() {
+                if (!this.settings || Object.keys(this.settings).length === 0) { document.getElementById('remaining-salary').textContent = `Configura tu sueldo`; return; };
+                const monthlySpent = this.expenses.filter(e => new Date(e.timestamp).getMonth() === new Date().getMonth() && new Date(e.timestamp).getFullYear() === new Date().getFullYear()).reduce((sum, e) => sum + e.amountUYU, 0);
+                const automaticSavings = (this.settings.salary * this.settings.savingsPercentage) / 100;
+                const totalSavings = automaticSavings + (this.settings.manualSavings || 0);
+                const emergencyFund = this.settings.emergencyFund || 0;
+                const remainingSalary = this.settings.salary - monthlySpent;
+                
+                document.getElementById('total-savings').textContent = `${totalSavings.toFixed(2)} UYU`;
+                document.getElementById('emergency-fund-display-bar').textContent = `${emergencyFund.toFixed(2)} UYU`;
+                document.getElementById('emergency-fund-display').textContent = `${emergencyFund.toFixed(2)} UYU`;
+                document.getElementById('monthly-spent').textContent = `${monthlySpent.toFixed(2)} UYU`;
+                document.getElementById('remaining-salary').textContent = `${remainingSalary.toFixed(2)} UYU`;
+                
+                const todaySpent = this.expenses.filter(e => new Date(e.timestamp).toDateString() === new Date().toDateString()).reduce((sum, e) => sum + e.amountUYU, 0);
+                const todayRemaining = (this.settings.dailyLimit || 0) - todaySpent;
+                
+                document.getElementById('today-spent').textContent = `${todaySpent.toFixed(2)} UYU`;
+                document.getElementById('daily-limit-display').textContent = `${(this.settings.dailyLimit || 0).toFixed(2)} UYU`;
+                document.getElementById('today-remaining').textContent = `${todayRemaining.toFixed(2)} UYU`;
+                document.getElementById('today-remaining').style.color = todayRemaining < 0 ? '#ff6b6b' : '#6bff9b';
+            }
+            convertToUYU(amount, currency) { if (currency === 'UYU') return amount; if (currency === 'USD') return amount * (this.settings.usdToUyu || 1); if (currency === 'BRL') return amount * (this.settings.brlToUyu || 1); return amount; }
+            showMessage(message, type = 'info') { const existing = document.querySelector('.error-message, .success-message'); if (existing) existing.remove(); const messageEl = document.createElement('div'); messageEl.className = type === 'error' ? 'error-message' : 'success-message'; messageEl.textContent = message; document.querySelector('.header').insertAdjacentElement('afterend', messageEl); setTimeout(() => messageEl.remove(), 5000); }
+            showSyncStatus(type, message) { this.syncStatusEl.className = `sync-status ${type}`; this.syncStatusEl.textContent = message; }
+            addOnlineStatusListener() { window.addEventListener('online', () => this.loadInitialData()); window.addEventListener('offline', () => { this.showSyncStatus('offline', '🔌 Modo Offline'); }); }
+        }
+        
+        const app = new PersonalFinanceAppMejorado();
+        document.addEventListener('DOMContentLoaded', () => { app.init(); });
+    </script>
+</body>
+</html>
